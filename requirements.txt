@@ -1,0 +1,14 @@
+# Core scientific stack
+numpy>=1.24
+pandas>=2.0
+matplotlib>=3.7
+
+# Dataset download
+kagglehub>=0.3
+
+# Notebook execution
+jupyter>=1.0
+ipykernel>=6.0
+
+# Optional: lecture-PDF text extraction (used only by tools/extract_lectures.py)
+pypdf>=4.0
