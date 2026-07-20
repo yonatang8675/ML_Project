@@ -25,13 +25,15 @@ def _entropy(y, n_classes):
 
 class DecisionTreeClassifier:
     def __init__(self, criterion="entropy", max_depth=None, min_samples_split=2,
-                 min_samples_leaf=1):
+                 min_samples_leaf=1, max_features=None, random_state=None):
         if criterion != "entropy":
             raise ValueError("criterion must be 'entropy'")
         self.criterion = criterion
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
         self.min_samples_leaf = min_samples_leaf
+        self.max_features = max_features      # None = all features (per-split subset for RF)
+        self.random_state = random_state      # seeds the random feature subset
 
         self.root_ = None
         self.n_classes_ = 0
@@ -44,6 +46,8 @@ class DecisionTreeClassifier:
         y = np.asarray(y, dtype=int)
         self.n_classes_ = int(y.max()) + 1
         self.n_features_ = X.shape[1]
+        self._rng = np.random.default_rng(self.random_state)
+        self._max_features_ = self._resolve_max_features()
         self._importances = np.zeros(self.n_features_)
         self.root_ = self._build(X, y, depth=0)
 
@@ -52,6 +56,28 @@ class DecisionTreeClassifier:
             self._importances / total if total > 0 else self._importances
         )
         return self
+
+    def _resolve_max_features(self):
+        # How many features to consider at each split (None -> all of them).
+        n = self.n_features_
+        max_features = self.max_features
+        if max_features is None:
+            return n
+        if isinstance(max_features, str):
+            if max_features == "sqrt":
+                return max(1, int(np.sqrt(n)))
+            if max_features == "log2":
+                return max(1, int(np.log2(n)))
+            raise ValueError("max_features must be 'sqrt', 'log2', an int, a float, or None")
+        if isinstance(max_features, float):
+            return max(1, min(n, int(max_features * n)))
+        return max(1, min(n, int(max_features)))
+
+    def _feature_subset(self):
+        # All features when max_features is None; otherwise a random subset (used by RF).
+        if self._max_features_ >= self.n_features_:
+            return range(self.n_features_)
+        return self._rng.choice(self.n_features_, size=self._max_features_, replace=False)
 
     def _impurity(self, y):
         return _entropy(y, self.n_classes_)
@@ -99,7 +125,7 @@ class DecisionTreeClassifier:
         best_feature = None
         best_threshold = None
 
-        for feature in range(self.n_features_):
+        for feature in self._feature_subset():
             values = X[:, feature]
             unique_values = np.unique(values)
             if unique_values.size == 1:
