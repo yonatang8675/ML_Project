@@ -1,5 +1,3 @@
-"""Classification accuracy, from scratch. Labels are assumed to be in {0, 1}."""
-
 import numpy as np
 
 

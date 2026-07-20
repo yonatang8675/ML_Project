@@ -1,9 +1,3 @@
-"""k-Nearest-Neighbors classifier, from scratch (lecture 10).
-
-Predicts by majority vote among the k closest training points, using
-vectorized Euclidean distances.
-"""
-
 import numpy as np
 
 

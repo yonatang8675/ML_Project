@@ -1,9 +1,3 @@
-"""Matplotlib figures. Each function saves a PNG into outdir and returns its path.
-
-Labels are in English (the written report is in Hebrew) to avoid RTL/font issues.
-Includes a from-scratch Johnson-Lindenstrauss random projection (lecture 15).
-"""
-
 import os
 
 import numpy as np

@@ -1,5 +1,3 @@
-"""Cross-validation, model evaluation and the duplicate-leakage experiment."""
-
 import numpy as np
 
 from . import metrics
@@ -26,9 +24,12 @@ def cross_val_score(model_factory, X, y, n_splits=5, seed=42, scale=False,
 
 
 def evaluate_model(model, X_train, y_train, X_test, y_test):
-    # Fit on train, score on test.
+    # Fit on train, score on both train and test.
     model.fit(X_train, y_train)
-    return {"accuracy": metrics.accuracy(y_test, model.predict(X_test))}
+    return {
+        "train_accuracy": metrics.accuracy(y_train, model.predict(X_train)),
+        "accuracy":       metrics.accuracy(y_test,  model.predict(X_test)),
+    }
 
 
 def duplicate_leakage_experiment(model_factory, X_raw, y_raw, X_unique, y_unique,
@@ -44,9 +45,16 @@ def duplicate_leakage_experiment(model_factory, X_raw, y_raw, X_unique, y_unique
             X_train, X_test = scaler.transform(X_train), scaler.transform(X_test)
         model = model_factory()
         model.fit(X_train, y_train)
-        return metrics.accuracy(y_test, model.predict(X_test))
+        return (
+            metrics.accuracy(y_train, model.predict(X_train)),
+            metrics.accuracy(y_test, model.predict(X_test)),
+        )
 
+    train_dup, test_dup = run(X_raw, y_raw)
+    train_dedup, test_dedup = run(X_unique, y_unique)
     return {
-        "accuracy_with_duplicates": run(X_raw, y_raw),
-        "accuracy_deduplicated": run(X_unique, y_unique),
+        "train_accuracy_with_duplicates": train_dup,
+        "accuracy_with_duplicates": test_dup,
+        "train_accuracy_deduplicated": train_dedup,
+        "accuracy_deduplicated": test_dedup,
     }

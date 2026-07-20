@@ -1,5 +1,3 @@
-"""From-scratch preprocessing helpers: train/test split, standardization, k-fold."""
-
 import numpy as np
 
 

@@ -1,10 +1,3 @@
-"""Decision Tree classifier (CART), from scratch (lecture 11).
-
-Splits are chosen greedily to maximize the impurity decrease (Gini or entropy),
-with max_depth / min_samples_split / min_samples_leaf for regularization.
-Also exposes impurity-based feature importances.
-"""
-
 import numpy as np
 
 
@@ -22,13 +15,6 @@ class _Node:
         return self.value is not None
 
 
-def _gini(y, n_classes):
-    # Gini impurity of a label vector.
-    counts = np.bincount(y, minlength=n_classes)
-    p = counts / counts.sum()
-    return float(1.0 - np.sum(p ** 2))
-
-
 def _entropy(y, n_classes):
     # Shannon entropy of a label vector.
     counts = np.bincount(y, minlength=n_classes)
@@ -38,10 +24,10 @@ def _entropy(y, n_classes):
 
 
 class DecisionTreeClassifier:
-    def __init__(self, criterion="gini", max_depth=None, min_samples_split=2,
+    def __init__(self, criterion="entropy", max_depth=None, min_samples_split=2,
                  min_samples_leaf=1):
-        if criterion not in ("gini", "entropy"):
-            raise ValueError("criterion must be 'gini' or 'entropy'")
+        if criterion != "entropy":
+            raise ValueError("criterion must be 'entropy'")
         self.criterion = criterion
         self.max_depth = max_depth
         self.min_samples_split = min_samples_split
@@ -68,9 +54,6 @@ class DecisionTreeClassifier:
         return self
 
     def _impurity(self, y):
-        # Impurity of the current node according to the chosen criterion.
-        if self.criterion == "gini":
-            return _gini(y, self.n_classes_)
         return _entropy(y, self.n_classes_)
 
     def _leaf(self, y):

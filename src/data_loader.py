@@ -1,10 +1,3 @@
-"""Load and clean the Heart Disease dataset (Kaggle: johnsmith88/heart-disease-dataset).
-
-The Kaggle CSV is the classic UCI Cleveland data (303 patients) padded with
-duplicate rows up to 1025. A random split would put identical rows in both
-train and test and inflate accuracy, so we drop duplicates by default.
-"""
-
 import os
 
 import numpy as np

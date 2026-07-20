@@ -1,10 +1,3 @@
-"""AdaBoost (discrete SAMME) with decision-stump weak learners, from scratch.
-
-Lecture 8. Labels are handled internally as {-1, +1}. Each round fits the stump
-with the smallest weighted error, sets alpha = 0.5 * ln((1-err)/err), and
-re-weights the samples. Final prediction is sign(sum_t alpha_t * h_t(x)).
-"""
-
 import numpy as np
 
 

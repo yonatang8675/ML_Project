@@ -1,10 +1,3 @@
-"""Feed-forward neural network (MLP), from scratch.
-
-Generalizes the Perceptron (lecture 6) and logistic regression (lecture 14):
-linear layers with non-linear activations, trained by mini-batch gradient
-descent on the binary cross-entropy loss. gradient_check verifies back-prop.
-"""
-
 import numpy as np
 
 
@@ -44,7 +37,8 @@ class NeuralNetwork:
     """Binary-classifier MLP trained with mini-batch gradient descent."""
 
     def __init__(self, hidden_layers=(16,), activation="relu", lr=0.05,
-                 epochs=200, batch_size=32, l2=1e-4, seed=42, verbose=False):
+                 epochs=200, batch_size=32, l2=1e-4, seed=42, verbose=False,
+                 patience=None, val_fraction=0.1):
         if activation not in ACTIVATIONS:
             raise ValueError("activation must be 'relu' or 'tanh'")
         self.hidden_layers = tuple(hidden_layers)
@@ -55,10 +49,14 @@ class NeuralNetwork:
         self.l2 = l2
         self.seed = seed
         self.verbose = verbose
+        self.patience = patience          # None = disabled; int = epochs to wait
+        self.val_fraction = val_fraction  # fraction of X used for early-stop val set
 
         self.weights_ = []
         self.biases_ = []
         self.loss_history_ = []
+        self.val_loss_history_ = []
+        self.best_epoch_ = None
 
     def _init_params(self, n_features):
         # He init for ReLU, Xavier for tanh.
@@ -120,18 +118,36 @@ class NeuralNetwork:
         return grads_w, grads_b
 
     def fit(self, X, y):
-        # Mini-batch gradient descent, recording the loss after each epoch.
+        # Mini-batch gradient descent with optional early stopping.
         X = np.asarray(X, dtype=float)
         y = np.asarray(y, dtype=float)
-        self._init_params(X.shape[1])
         rng = np.random.default_rng(self.seed)
-        n_samples = X.shape[0]
+
+        # Split off a validation set for early stopping if patience is set.
+        if self.patience is not None:
+            n_val = max(1, int(len(X) * self.val_fraction))
+            perm0 = rng.permutation(len(X))
+            val_idx, train_idx = perm0[:n_val], perm0[n_val:]
+            X_tr, y_tr = X[train_idx], y[train_idx]
+            X_val, y_val = X[val_idx], y[val_idx]
+        else:
+            X_tr, y_tr = X, y
+            X_val, y_val = None, None
+
+        self._init_params(X_tr.shape[1])
+        n_samples = X_tr.shape[0]
         self.loss_history_ = []
+        self.val_loss_history_ = []
+
+        best_val_loss = np.inf
+        best_weights = None
+        best_biases = None
+        no_improve = 0
 
         for epoch in range(self.epochs):
             # Shuffle the rows at the start of every epoch.
             perm = rng.permutation(n_samples)
-            X_shuffled, y_shuffled = X[perm], y[perm]
+            X_shuffled, y_shuffled = X_tr[perm], y_tr[perm]
             for start in range(0, n_samples, self.batch_size):
                 X_batch = X_shuffled[start:start + self.batch_size]
                 y_batch = y_shuffled[start:start + self.batch_size]
@@ -141,11 +157,35 @@ class NeuralNetwork:
                     self.weights_[i] -= self.lr * grads_w[i]
                     self.biases_[i] -= self.lr * grads_b[i]
 
-            activations, _ = self._forward(X)
-            loss = self._loss(y, activations[-1].ravel())
+            acts, _ = self._forward(X_tr)
+            loss = self._loss(y_tr, acts[-1].ravel())
             self.loss_history_.append(loss)
+
+            if self.patience is not None:
+                val_acts, _ = self._forward(X_val)
+                val_loss = self._loss(y_val, val_acts[-1].ravel())
+                self.val_loss_history_.append(val_loss)
+
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    best_weights = [w.copy() for w in self.weights_]
+                    best_biases  = [b.copy() for b in self.biases_]
+                    no_improve = 0
+                    self.best_epoch_ = epoch
+                else:
+                    no_improve += 1
+                    if no_improve >= self.patience:
+                        if self.verbose:
+                            print(f"Early stop at epoch {epoch} (best={self.best_epoch_})")
+                        break
+
             if self.verbose and (epoch % 20 == 0 or epoch == self.epochs - 1):
                 print(f"epoch {epoch:4d}  loss={loss:.4f}")
+
+        # Restore the weights from the best epoch when early stopping is used.
+        if self.patience is not None and best_weights is not None:
+            self.weights_ = best_weights
+            self.biases_  = best_biases
         return self
 
     def predict_proba(self, X):
